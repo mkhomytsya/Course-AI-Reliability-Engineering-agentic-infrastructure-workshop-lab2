@@ -1,8 +1,21 @@
 # ==========================================
+# Gateway API CRDs
+# ==========================================
+resource "helm_release" "gateway_api_crds" {
+  depends_on       = [kind_cluster.this]
+  name             = "gateway-api-crds"
+  namespace        = "gateway-api-system"
+  repository       = "oci://ghcr.io/den-vasyliev"
+  chart            = "gateway-api-crds"
+  version          = "1.4.0"
+  create_namespace = true
+}
+
+# ==========================================
 # Bootstrap Agentgateway
 # ==========================================
 resource "helm_release" "agentgateway_crds" {
-  depends_on       = [kind_cluster.this]
+  depends_on       = [helm_release.gateway_api_crds]
   name             = "agentgateway-crds"
   namespace        = "agentgateway-system"
   repository       = "oci://ghcr.io/kgateway-dev/charts"

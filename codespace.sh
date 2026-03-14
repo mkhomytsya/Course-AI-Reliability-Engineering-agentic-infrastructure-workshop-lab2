@@ -49,6 +49,15 @@ rm /tmp/cloud-provider-kind.tar.gz
 nohup cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
 log "cloud-provider-kind started (pid $!)"
 
+# Wait for Gateway API CRDs then apply GatewayClass + Gateway
+log "Waiting for Gateway API CRDs..."
+until kubectl get crd gateways.gateway.networking.k8s.io >/dev/null 2>&1; do
+  log "  not ready yet, retrying in 5s..."
+  sleep 5
+done
+log "Applying gatewayapi/Gateway.yaml..."
+kubectl apply -f gatewayapi/Gateway.yaml
+
 # Wait for LoadBalancer IP
 log "Waiting for LoadBalancer IP..."
 for i in $(seq 1 30); do

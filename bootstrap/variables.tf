@@ -1,11 +1,17 @@
 variable "cluster_name" {
   description = "Cluster Name"
   type        = string
-  default     = "preview"
+  default     = "a-box"
 }
 
 variable "oci_registry" {
-  description = "OCI registry URL for Flux config helm chart"
+  description = "OCI registry base URL"
   type        = string
   default     = "oci://ghcr.io/den-vasyliev/a-box"
+}
+
+variable "releases_version" {
+  description = "Default tag for releases OCI artifact bootstrap"
+  type        = string
+  default     = "0.1.0"
 }

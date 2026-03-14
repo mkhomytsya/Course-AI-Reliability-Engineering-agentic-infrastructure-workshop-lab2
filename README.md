@@ -1,82 +1,74 @@
 # a-box
 
-Ephemeral PR preview environments on a local Kubernetes cluster using KinD, Flux CD, and Agentgateway.
+Local Kubernetes environment using KinD, Flux CD, and kgateway (agentgateway). Gitless GitOps via OCI artifacts.
 
 ## Stack
 
 - **KinD** — local Kubernetes cluster (1 control-plane + 2 workers)
 - **Flux CD 2.x** — GitOps operator (Flux Operator + FluxInstance)
-- **Agentgateway v2.2.1** — Kubernetes Gateway API implementation
+- **kgateway v2.3.0** — Kubernetes Gateway API implementation
+- **kagent** — AI agent framework
 - **cloud-provider-kind** — LoadBalancer support for KinD
 
-## Quickstart (GitHub Codespaces)
-
-1. Fork or open this repo in a Codespace
-2. Set the `GITHUB_TOKEN` secret in your [Codespace secrets](https://github.com/settings/codespaces)
-3. Create codespace — `postCreateCommand` runs `.devcontainer/setup.sh` automatically
+## Quickstart
 
 ```bash
-gh codespace create --repo den-vasyliev/a-box --machine basicLinux32gb
+# In a GitHub Codespace or Linux machine:
+make run
 ```
 
-The setup script installs OpenTofu and K9s, runs `tofu apply` to provision the KinD cluster, bootstraps Flux, and applies the gateway manifests.
-
-## Manual Setup
-
-```bash
-# Install OpenTofu
-curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone
-
-# Install K9s
-curl -sS https://webi.sh/k9s | sh
-
-# Provision cluster + bootstrap Flux
-cd bootstrap
-export TF_VAR_github_token="<your-token>"
-tofu init
-tofu apply
-```
-
-## Directory Layout
-
-| Directory | Purpose |
-|-----------|---------|
-| `bootstrap/` | OpenTofu: KinD cluster + Flux Operator + Agentgateway manifests |
-| `gatewayapi/` | Flux HelmReleases for Gateway API CRDs + Agentgateway + GatewayClass |
-| `release/` | HelmRelease for production app |
-| `preview/` | Flux ResourceSet manifests for dynamic PR environments |
-| `.devcontainer/` | GitHub Codespaces configuration |
+This installs OpenTofu and K9s, provisions the KinD cluster, bootstraps Flux, and starts cloud-provider-kind.
 
 ## How it works
 
 ```
-tofu apply
-  → KinD cluster created
-  → Flux Operator + FluxInstance bootstrapped (syncs this repo)
-    → gatewayapi/ applied:
-        - Gateway API CRDs (kubernetes-sigs/gateway-api v1.4.0)
-        - agentgateway-crds HelmRelease
-        - agentgateway HelmRelease
-        - GatewayClass + Gateway
-    → preview/ applied:
-        - ResourceSetInputProvider polls GitHub PRs
-        - ResourceSet creates GitRepository + HelmRelease + HTTPRoute per PR
+make run  →  scripts/setup.sh
+  → tofu apply (bootstrap/)
+      → KinD cluster
+      → helm: flux-operator
+      → helm: flux-instance  (wait=true)
+      → helm: flux-config       ← installs ResourceSetInputProvider + ResourceSet
+          → RSIP polls oci://ghcr.io/den-vasyliev/a-box/releases (semver tags)
+          → ResourceSet creates OCIRepository + Kustomization
+              → releases/ OCI artifact reconciled:
+                  kgateway-crds.yaml  → kgateway-crds HelmRelease (Gateway API CRDs)
+                  kgateway.yaml       → kgateway HelmRelease (dependsOn crds)
+                                      → GatewayClass + Gateway
+                  kagent-crds.yaml    → kagent-crds HelmRelease
+                  kagent.yaml         → kagent HelmRelease (dependsOn crds)
 ```
+
+## CI/CD
+
+Pushing to `main` (or tagging `v*`) triggers `.github/workflows/flux-push.yaml`:
+- Pushes `releases/` as OCI artifact to `ghcr.io/den-vasyliev/a-box/releases`
+- Packages and pushes `charts/flux-config` Helm chart to `ghcr.io/den-vasyliev/a-box`
+
+RSIP picks up the new semver tag and Flux reconciles automatically — no git write-back.
+
+## Directory Layout
+
+| Path | Purpose |
+|------|---------|
+| `bootstrap/` | OpenTofu: KinD cluster + Flux bootstrap |
+| `charts/flux-config/` | Helm chart: bootstraps RSIP + ResourceSet |
+| `releases/` | OCI artifact contents: Flux manifests for kgateway + kagent |
+| `scripts/setup.sh` | Full setup script (called by `make run`) |
+| `.github/workflows/` | CI: push OCI artifact + Helm chart on merge |
 
 ## Verify
 
 ```bash
-# Check Flux resources
+# Flux resources
 flux get all
 
-# Check gateway
+# Gateway
 kubectl get gateway,httproute -A
 kubectl get gatewayclass agentgateway
 
-# Get LoadBalancer IP
+# LoadBalancer IP
 kubectl get svc -n agentgateway-system
 
-# Test
-curl $LB_IP -HHost:kbot.example.com
-curl $LB_IP/pr-40 -HHost:kbot.example.com
+# kagent
+kubectl get agents -n kagent
 ```

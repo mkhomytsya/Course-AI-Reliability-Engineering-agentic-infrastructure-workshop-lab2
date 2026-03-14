@@ -1,12 +1,7 @@
-name: Push Flux config as OCI artifact
+name: Push releases as OCI artifact
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'flux-config/**'
-      - 'charts/flux-config/**'
-      - '.github/workflows/flux-push.yaml'
     tags:
       - 'v*'
 
@@ -33,36 +28,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Calculate version
-        id: version
-        run: |
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          COMMITS=$(git rev-list ${TAG}..HEAD --count 2>/dev/null || git rev-list HEAD --count)
-          SEMVER="${TAG#v}"
-          if [[ "$COMMITS" -gt 0 ]]; then
-            SEMVER="${SEMVER}-${COMMITS}-g$(git rev-parse --short HEAD)"
-          fi
-          echo "tag=${SEMVER}" >> $GITHUB_OUTPUT
-          echo "tag_ts=${SEMVER}-$(date +%s)" >> $GITHUB_OUTPUT
-
       - name: Push OCI artifact
         id: push
         run: |
-          digest=$(flux push artifact oci://ghcr.io/${{ github.repository }}/flux-config:${{ steps.version.outputs.tag }} \
-            --path="./flux-config" \
+          TAG=${GITHUB_REF_NAME#v}
+          digest=$(flux push artifact oci://ghcr.io/${{ github.repository }}/releases:${TAG} \
+            --path="./releases" \
             --source="${{ github.repositoryUrl }}" \
             --revision="${{ github.ref_name }}@sha1:${{ github.sha }}" \
             --output json | jq -r '.digest')
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       - name: Tag artifact
         run: |
           flux tag artifact \
-            oci://ghcr.io/${{ github.repository }}/flux-config:${{ steps.version.outputs.tag }}@${{ steps.push.outputs.digest }} \
-            --tag ${{ steps.version.outputs.tag_ts }} \
+            oci://ghcr.io/${{ github.repository }}/releases:${{ steps.push.outputs.tag }}@${{ steps.push.outputs.digest }} \
             --tag latest
-
-      - name: Push Helm chart
-        run: |
-          helm package charts/flux-config
-          helm push flux-config-*.tgz oci://ghcr.io/${{ github.repository }}

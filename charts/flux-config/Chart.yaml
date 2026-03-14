@@ -1,5 +1,0 @@
-apiVersion: v2
-name: flux-config
-description: Bootstraps Flux OCIRepository and Kustomization for gitless GitOps
-type: application
-version: 0.1.0

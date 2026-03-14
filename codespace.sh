@@ -57,6 +57,7 @@ kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/re
 
 # Apply GatewayClass + Gateway
 log "Applying gatewayapi/Gateway.yaml..."
+kubectl delete gatewayclass agentgateway --ignore-not-found
 kubectl apply -f gatewayapi/Gateway.yaml
 
 # Wait for LoadBalancer IP

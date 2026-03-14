@@ -1,58 +1,65 @@
 #!/bin/bash
+set -euo pipefail
+
+LOG=/tmp/setup.log
+exec > >(tee -a "$LOG") 2>&1
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+log "=== k8sdiy-env setup start ==="
 
 # Install OpenTofu
-curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone 
+log "Installing OpenTofu..."
+curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone
+log "OpenTofu installed"
 
-# Install K9S to manage the cluster
+# Install K9s
+log "Installing K9s..."
 curl -sS https://webi.sh/k9s | sh
+log "K9s installed"
 
-# Create alias for k9s, kubectl and command-line autocompletion
+# Add aliases to bashrc
+cat >> ~/.bashrc <<'EOF'
+
+# k8sdiy-env aliases
 alias kk="EDITOR='code --wait' k9s"
 alias tf=tofu
 alias k=kubectl
+EOF
 
 # Initialize Tofu
+log "Running tofu init..."
 cd bootstrap
 tofu init
+log "tofu init done"
 
-# Prompt the user to enter the GitHub token securely
-read -s GITHUB_TOKEN
+log "Running tofu apply..."
+tofu apply -auto-approve
+log "tofu apply done"
 
-# Export GitHub organization, repository, and token as environment variables
-export TF_VAR_github_token="$GITHUB_TOKEN"
+cd ..
 
-# Apply terrafrom configuration
-tofu apply
+# Install cloud-provider-kind (LoadBalancer support)
+log "Installing cloud-provider-kind..."
+ARCH=$(dpkg --print-architecture)
+wget -q "https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_linux_${ARCH}.tar.gz" \
+  -O /tmp/cloud-provider-kind.tar.gz
+tar -xzf /tmp/cloud-provider-kind.tar.gz -C /usr/local/bin cloud-provider-kind
+rm /tmp/cloud-provider-kind.tar.gz
+nohup cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
+log "cloud-provider-kind started (pid $!)"
 
-# Install Class and GW 
-k apply -f ../gatewayapi
+# Wait for LoadBalancer IP
+log "Waiting for LoadBalancer IP..."
+for i in $(seq 1 30); do
+  LB_IP=$(kubectl get svc -n agentgateway-system \
+    -o jsonpath='{.items[?(@.spec.type=="LoadBalancer")].status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+  if [[ -n "$LB_IP" ]]; then
+    log "LoadBalancer IP: $LB_IP"
+    break
+  fi
+  log "Attempt $i/30 — not ready yet, retrying in 5s..."
+  sleep 5
+done
 
-k get svc
-
-# Install kind loabalancer
-wget https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.6.0/cloud-provider-kind_0.6.0_linux_amd64.tar.gz
-tar -xvzf cloud-provider-kind_0.6.0_linux_amd64.tar.gz -C /go/bin
-/go/bin/cloud-provider-kind >/dev/null 2>&1 &
-
-# Install Release
-k apply -f ../release
-# Retrieve the IP address of the LoadBalancer service
-LB_IP=$(kubectl get svc -o jsonpath='{.items[?(@.metadata.name matches "envoy-envoy-gateway.*")].status.loadBalancer.ingress[0].ip}' -n envoy-gateway-system) 
-echo "LoadBalancer IP: $LB_IP"
-# Check
-curl $LB_IP -HHost:kbot.example.com
-
-# Install preview
-k apply -f ../preview
-
-# Install secrets in preview
-kubectl create secret generic github-auth \
---from-literal=username=git \
---from-literal=password=${GITHUB_TOKEN} \
--n app-preview
-
-# Open 
-curl $LB_IP/pr-40 -HHost:kbot.example.com
-
-# Merge PR
-# Create Release
+log "=== setup complete ==="

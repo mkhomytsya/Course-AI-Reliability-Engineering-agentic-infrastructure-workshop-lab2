@@ -36,6 +36,15 @@ spec:
   install:
     createNamespace: true
   values:
+    controller:
+      image:
+        tag: 0.7.23
+    kagent-tools:
+      nameOverride: tools
+    tag: 0.7.23
+    ui:
+      image:
+        tag: 0.7.23
     tools:
       querydoc:
         enabled: false

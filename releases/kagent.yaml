@@ -39,12 +39,12 @@ spec:
     controller:
       image:
         tag: 0.7.23
-    kagent-tools:
-      nameOverride: tools
     tag: 0.7.23
     ui:
       image:
         tag: 0.7.23
+    kagent-tools:
+      fullnameOverride: kagent-tool-server
     tools:
       querydoc:
         enabled: false
@@ -63,3 +63,6 @@ spec:
         enabled: false
       istio-manager-agent:
         enabled: false
+      providers:
+        openAI:
+          apiKey: OPENAI_API_KEY

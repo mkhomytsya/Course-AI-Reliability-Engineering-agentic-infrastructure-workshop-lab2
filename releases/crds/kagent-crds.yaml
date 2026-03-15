@@ -21,6 +21,7 @@ metadata:
   namespace: kagent
 spec:
   interval: 1h
+  releaseName: kagent-crds
   chartRef:
     kind: OCIRepository
     name: kagent-crds

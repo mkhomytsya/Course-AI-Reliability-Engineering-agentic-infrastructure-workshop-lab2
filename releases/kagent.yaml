@@ -21,6 +21,7 @@ metadata:
   namespace: kagent
 spec:
   interval: 1h
+  releaseName: kagent
   dependsOn:
     - name: kagent-crds
       namespace: kagent

@@ -32,16 +32,11 @@ spec:
   install:
     createNamespace: true
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: agentgateway-external
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: agentgateway
-  namespace: agentgateway-external
+  name: agentgateway-external
+  namespace: agentgateway-system
 spec:
   gatewayClassName: kgateway
   listeners:

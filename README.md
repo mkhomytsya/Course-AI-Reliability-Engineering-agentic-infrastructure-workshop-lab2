@@ -1,12 +1,12 @@
-# a-box
+# abox
 
-Local Kubernetes environment using KinD, Flux CD, and kgateway (agentgateway). Gitless GitOps via OCI artifacts.
+Local Kubernetes environment using KinD, Flux CD, and agentgateway. Gitless GitOps via OCI artifacts.
 
 ## Stack
 
 - **KinD** — local Kubernetes cluster (1 control-plane + 2 workers)
 - **Flux CD 2.x** — GitOps operator (Flux Operator + FluxInstance)
-- **kgateway v2.3.0** — Kubernetes Gateway API implementation
+- **agentgateway v2.2.1** — Kubernetes Gateway API implementation
 - **kagent** — AI agent framework
 - **cloud-provider-kind** — LoadBalancer support for KinD
 
@@ -26,32 +26,35 @@ make run  →  scripts/setup.sh
       → KinD cluster
       → helm: flux-operator
       → helm: flux-instance        (wait=true)
-      → kubernetes_manifest: RSIP  (depends_on flux-instance)
-          polls oci://ghcr.io/den-vasyliev/a-box/releases
+      → kubectl_manifest: RSIP     (depends_on flux-instance)
+          polls oci://ghcr.io/den-vasyliev/abox/releases
           filter: semver tags only  ^\d+\.\d+\.\d+$
-      → kubernetes_manifest: ResourceSet  (depends_on RSIP)
-          creates OCIRepository + Kustomization per tag
-              → releases/ OCI artifact reconciled:
-                  kgateway-crds.yaml  → kgateway-crds HelmRelease (Gateway API CRDs)
-                  kgateway.yaml       → kgateway HelmRelease + GatewayClass + Gateway
-                  kagent-crds.yaml    → kagent-crds HelmRelease
-                  kagent.yaml         → kagent HelmRelease
+      → kubectl_manifest: ResourceSet  (depends_on RSIP)
+          creates OCIRepository + 2 Kustomizations per tag
+              → releases/crds/ reconciled first:
+                  gateway-api-crds.yaml   → gateway-api-crds HelmRelease
+                  agentgateway-crds.yaml  → agentgateway-crds HelmRelease
+                  kagent-crds.yaml        → kagent-crds HelmRelease
+              → releases/ reconciled after crds:
+                  agentgateway.yaml  → agentgateway HelmRelease + Gateway
+                  kagent.yaml        → kagent HelmRelease + HTTPRoute
 ```
 
 ## Releasing
 
-Push a semver tag to trigger the CI workflow, which publishes a new OCI artifact. RSIP picks it up and Flux reconciles automatically.
-
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+make push
 ```
+
+Bumps patch version, tags, and pushes to trigger CI. The CI workflow publishes `releases/` as an OCI artifact. RSIP picks it up and Flux reconciles automatically.
 
 ## Directory Layout
 
 | Path | Purpose |
 |------|---------|
 | `bootstrap/` | OpenTofu: KinD cluster + Flux bootstrap (operator, instance, RSIP, ResourceSet) |
-| `releases/` | OCI artifact contents: Flux manifests for kgateway + kagent |
+| `releases/crds/` | CRDs: gateway-api, agentgateway, kagent |
+| `releases/` | agentgateway + kagent Flux manifests |
 | `scripts/setup.sh` | Full setup script (called by `make run`) |
 | `.github/workflows/flux-push.yaml` | CI: push `releases/` as OCI artifact on `v*` tags |
 

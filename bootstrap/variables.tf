@@ -1,13 +1,13 @@
 variable "cluster_name" {
   description = "Cluster Name"
   type        = string
-  default     = "a-box"
+  default     = "abox"
 }
 
 variable "oci_registry" {
   description = "OCI registry base URL"
   type        = string
-  default     = "oci://ghcr.io/den-vasyliev/a-box"
+  default     = "oci://ghcr.io/den-vasyliev/abox"
 }
 
 variable "releases_version" {

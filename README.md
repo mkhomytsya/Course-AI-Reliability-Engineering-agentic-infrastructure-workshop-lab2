@@ -2,6 +2,10 @@
 
 > One command. Full AI infrastructure.
 
+## Demo
+
+▶️ ![Demo](docs/demo.gif)
+
 `make run` gives you a local Kubernetes cluster with everything an AI project needs: an AI-aware API gateway, an agent runtime, observability, distributed tracing, and an eval harness — ready to use.
 
 ## What's included

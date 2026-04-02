@@ -112,9 +112,14 @@ kubectl port-forward -n kagent svc/kagent-ui 18080:8080
 
 ### AgentGateway UI
 
-There is no dedicated AgentGateway web panel in this lab configuration.
+The agentgateway proxy embeds a dashboard on port `15000`.
 
-In earlier workshop variants, the gateway stack exposed an admin UI. In this lab, the stack was replaced with the native `agentgateway` chart (`v2.2.1`), which exposes gateway/runtime endpoints but not a standalone web dashboard.
+```bash
+kubectl port-forward -n agentgateway-system deploy/agentgateway-external 15000:15000
+# open http://localhost:15000/ui
+```
+
+From there you can inspect Listeners, Routes, Backends, Policies, and use the Playground.
 
 ## How it works
 

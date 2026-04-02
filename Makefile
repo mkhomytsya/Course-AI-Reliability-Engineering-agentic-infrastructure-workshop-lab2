@@ -1,3 +1,5 @@
+PLATFORM := $(shell uname -s)-$(shell uname -m)
+
 help:
 	@echo "Available targets:"
 	@echo "  run    - Bootstrap the full environment (install tools, provision cluster)"
@@ -8,11 +10,22 @@ help:
 	@echo "  apply  - Apply OpenTofu configuration"
 
 run:
+	@echo "This will provision a new Kubernetes cluster and deploy all components."
+ifeq ($(PLATFORM),Darwin-arm64)
+	@bash scripts/setup-darwin.sh
+else
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
 	@bash scripts/setup.sh
+endif
 
 tools:
+ifeq ($(PLATFORM),Darwin-arm64)
+	@echo "darwin: using pre-installed tools (k3d, kubectl, helm, k9s)"
+else
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; }
 	@curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone
 	@curl -sS https://webi.sh/k9s | bash
+endif
 
 tofu:
 	@cd bootstrap && tofu init
@@ -21,7 +34,11 @@ apply:
 	@cd bootstrap && tofu apply -auto-approve
 
 down:
+ifeq ($(PLATFORM),Darwin-arm64)
+	@cd bootstrap-darwin && tofu destroy -auto-approve
+else
 	@cd bootstrap && tofu destroy -auto-approve
+endif
 
 push:
 	@git fetch origin --tags --force

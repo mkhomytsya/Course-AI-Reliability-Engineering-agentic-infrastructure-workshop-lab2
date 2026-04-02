@@ -61,10 +61,10 @@ providers:
     apiKeySecretKey: OPENAI_API_KEY
 ```
 
-4. Reconcile Flux so the updated manifest is applied:
+4. Restart kagent so it picks up the new secret:
 
 ```bash
-flux reconcile kustomization releases -n flux-system --with-source
+kubectl rollout restart deployment/kagent-controller -n kagent
 ```
 
 5. Verify the setup:

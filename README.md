@@ -30,6 +30,88 @@ kubectl get svc -n agentgateway-system  # grab the LoadBalancer IP
 
 Point your AI app at the gateway IP on port 80.
 
+## LLM secret setup (lab1 style)
+
+This lab uses `kagent` with OpenAI provider credentials from a Kubernetes Secret.
+
+1. Export your OpenAI API key:
+
+```bash
+read -s OPENAI_API_KEY && export OPENAI_API_KEY
+```
+
+2. Create or update secret `kagent-openai` in namespace `kagent`:
+
+```bash
+kubectl create secret generic kagent-openai \
+  --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" \
+  -n kagent \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+3. Ensure provider config in `releases/kagent.yaml` references the secret:
+
+```yaml
+providers:
+  default: openAI
+  openAI:
+    provider: OpenAI
+    model: "gpt-5-mini"
+    apiKeySecretRef: kagent-openai
+    apiKeySecretKey: OPENAI_API_KEY
+```
+
+4. Reconcile Flux so the updated manifest is applied:
+
+```bash
+flux reconcile kustomization releases -n flux-system --with-source
+```
+
+5. Verify the setup:
+
+```bash
+kubectl get secret -n kagent kagent-openai
+kubectl get pods -n kagent
+kubectl get modelconfig -n kagent -o yaml
+```
+
+If your key is invalid or missing, kagent agents may start but LLM calls will fail at runtime.
+
+## UI access
+
+After `make run`, use the commands below to open the current web UIs.
+
+### Flux UI
+
+Flux UI is exposed by `flux-operator` on service port `9080`.
+
+```bash
+kubectl port-forward -n flux-system svc/flux-operator 19080:9080
+# open http://localhost:19080/
+```
+
+### Kagent UI
+
+Kagent UI is routed through `agentgateway-external` on path `/`.
+
+```bash
+kubectl get svc -n agentgateway-system agentgateway-external
+# open http://<EXTERNAL-IP>/
+```
+
+If you prefer localhost access:
+
+```bash
+kubectl port-forward -n kagent svc/kagent-ui 18080:8080
+# open http://localhost:18080/
+```
+
+### AgentGateway UI
+
+There is no dedicated AgentGateway web panel in this lab configuration.
+
+In earlier workshop variants, the gateway stack exposed an admin UI. In this lab, the stack was replaced with the native `agentgateway` chart (`v2.2.1`), which exposes gateway/runtime endpoints but not a standalone web dashboard.
+
 ## How it works
 
 ```

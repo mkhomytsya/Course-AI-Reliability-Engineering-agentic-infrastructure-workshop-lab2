@@ -119,7 +119,7 @@ make run  →  scripts/setup.sh
   → tofu apply (bootstrap/)
       → KinD cluster
       → Flux Operator + FluxInstance
-      → ResourceSetInputProvider   polls oci://ghcr.io/mkhomytsya/Course-AI-Reliability-Engineering-agentic-infrastructure-workshop-lab2/releases
+      → ResourceSetInputProvider   polls oci://ghcr.io/mkhomytsya/course-ai-reliability-engineering-agentic-infrastructure-workshop-lab2/releases
       → ResourceSet                creates OCIRepository + 2 Kustomizations
           → releases/crds/    gateway-api-crds, agentgateway-crds, kagent-crds
           → releases/         agentgateway (Gateway + GatewayClass)

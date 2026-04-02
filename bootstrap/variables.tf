@@ -7,7 +7,7 @@ variable "cluster_name" {
 variable "oci_registry" {
   description = "OCI registry base URL"
   type        = string
-  default     = "oci://ghcr.io/mkhomytsya/Course-AI-Reliability-Engineering-agentic-infrastructure-workshop-lab2"
+  default     = "oci://ghcr.io/mkhomytsya/course-ai-reliability-engineering-agentic-infrastructure-workshop-lab2"
 }
 
 variable "releases_version" {
